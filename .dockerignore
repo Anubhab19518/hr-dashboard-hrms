@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.husky
+coverage
+test-results
+playwright-report
+blob-report
+e2e
+*.md
+*.bak
+.env*.local
+.vscode
+.idea
