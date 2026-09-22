@@ -1,12 +1,18 @@
-export type Role = 'admin' | 'manager' | 'viewer';
+export type Role = 'admin' | 'hr_manager' | 'supervisor' | 'viewer';
 
 export type Permission =
-  | 'orders:read'
-  | 'orders:create'
-  | 'orders:update'
-  | 'orders:delete'
-  | 'orders:approve_high_value'
-  | 'users:manage';
+  | 'employees:read'
+  | 'employees:create'
+  | 'employees:update'
+  | 'employees:delete'
+  | 'attendance:read'
+  | 'attendance:create'
+  | 'organization:read'
+  | 'organization:manage'
+  | 'safety:read'
+  | 'safety:resolve'
+  | 'workspaces:create'
+  | 'workspaces:manage';
 
 export interface UserSession {
   readonly id: string;
@@ -17,15 +23,38 @@ export interface UserSession {
 
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   admin: [
-    'orders:read',
-    'orders:create',
-    'orders:update',
-    'orders:delete',
-    'orders:approve_high_value',
-    'users:manage',
+    'employees:read',
+    'employees:create',
+    'employees:update',
+    'employees:delete',
+    'attendance:read',
+    'attendance:create',
+    'organization:read',
+    'organization:manage',
+    'safety:read',
+    'safety:resolve',
+    'workspaces:create',
+    'workspaces:manage',
   ],
-  manager: ['orders:read', 'orders:create', 'orders:update', 'orders:approve_high_value'],
-  viewer: ['orders:read'],
+  hr_manager: [
+    'employees:read',
+    'employees:create',
+    'employees:update',
+    'attendance:read',
+    'attendance:create',
+    'organization:read',
+    'organization:manage',
+    'safety:read',
+    'safety:resolve',
+  ],
+  supervisor: [
+    'employees:read',
+    'attendance:read',
+    'attendance:create',
+    'organization:read',
+    'safety:read',
+  ],
+  viewer: ['employees:read', 'attendance:read', 'organization:read', 'safety:read'],
 };
 
 /**

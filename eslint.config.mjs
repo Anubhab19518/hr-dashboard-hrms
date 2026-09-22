@@ -166,7 +166,7 @@ export default [
             {
               from: ['features'],
               allow: [
-                ['features', { featureName: '${from.featureName}' }],
+                'features',
                 'components-templates',
                 'components-organisms',
                 'components-molecules',
@@ -347,41 +347,41 @@ export default [
         'error',
         // 6a. Ban raw Hex colors in component files
         {
-          selector: "Literal[value=/^#([0-9a-fA-F]{3}){1,2}$/]",
+          selector: 'Literal[value=/^#([0-9a-fA-F]{3}){1,2}$/]',
           message:
             'Arbitrary hardcoded hex colors are forbidden in components by AGENTS.md Rule 72 & Atomic Design principles. Consume design tokens via hsl(var(--...)) or var(--color-...).',
         },
         // 6b. Ban raw RGB/HSL color functions without CSS variables
         {
-          selector: "Literal[value=/^(rgb|rgba|hsl|hsla)\\((?!.*var\\(--)/]",
+          selector: 'Literal[value=/^(rgb|rgba|hsl|hsla)\\((?!.*var\\(--)/]',
           message:
             'Raw color functions missing CSS variables are forbidden. Consume design tokens via hsl(var(--...)).',
         },
         // 6c. Ban literal CSS color names in color-related style properties
         {
           selector:
-            "Property[key.name=/^(color|backgroundColor|borderColor|borderTopColor|borderRightColor|borderBottomColor|borderLeftColor|fill|stroke)$/] > Literal[value=/^(red|blue|green|yellow|purple|orange|pink|gray|grey)$/i]",
+            'Property[key.name=/^(color|backgroundColor|borderColor|borderTopColor|borderRightColor|borderBottomColor|borderLeftColor|fill|stroke)$/] > Literal[value=/^(red|blue|green|yellow|purple|orange|pink|gray|grey)$/i]',
           message:
             'Literal color names are forbidden. Consume design tokens via hsl(var(--...)) or var(--text-muted).',
         },
         // 6d. Ban hardcoded dimensional spacing strings (px/rem) where design tokens should be used
         {
           selector:
-            "Property[key.name=/^(padding|paddingTop|paddingRight|paddingBottom|paddingLeft|margin|marginTop|marginRight|marginBottom|marginLeft|gap|rowGap|columnGap)$/] > Literal[value=/^(?!(0|0px|100%|auto|inherit|initial|unset)$)\\d+.*$/][value!=/var\\(--space-/]",
+            'Property[key.name=/^(padding|paddingTop|paddingRight|paddingBottom|paddingLeft|margin|marginTop|marginRight|marginBottom|marginLeft|gap|rowGap|columnGap)$/] > Literal[value=/^(?!(0|0px|100%|auto|inherit|initial|unset)$)\\d+.*$/][value!=/var\\(--space-/]',
           message:
             'Hardcoded spacing dimensions are forbidden. Consume design tokens like var(--space-1) through var(--space-16).',
         },
         // 6e. Ban hardcoded border radii strings where design tokens should be used
         {
           selector:
-            "Property[key.name=/^(borderRadius|borderTopLeftRadius|borderTopRightRadius|borderBottomLeftRadius|borderBottomRightRadius)$/] > Literal[value=/^(?!(0|0px|50%|9999px|inherit|initial|unset)$)\\d+.*$/][value!=/var\\(--radius-/]",
+            'Property[key.name=/^(borderRadius|borderTopLeftRadius|borderTopRightRadius|borderBottomLeftRadius|borderBottomRightRadius)$/] > Literal[value=/^(?!(0|0px|50%|9999px|inherit|initial|unset)$)\\d+.*$/][value!=/var\\(--radius-/]',
           message:
             'Hardcoded border-radii are forbidden. Consume design tokens like var(--radius-sm), var(--radius-md), var(--radius-lg), var(--radius-xl), or var(--radius-full).',
         },
         // 6f. Ban hardcoded shadow strings missing design tokens
         {
           selector:
-            "Property[key.name=/^(boxShadow|textShadow)$/] > Literal[value=/^(?!none|inherit|initial|unset).*$/][value!=/var\\(--shadow-/]",
+            'Property[key.name=/^(boxShadow|textShadow)$/] > Literal[value=/^(?!none|inherit|initial|unset).*$/][value!=/var\\(--shadow-/]',
           message:
             'Hardcoded box/text shadows are forbidden. Consume design tokens like var(--shadow-sm), var(--shadow-md), var(--shadow-lg), var(--shadow-xl), or var(--shadow-glow).',
         },
@@ -401,4 +401,3 @@ export default [
   // 8. Prettier config to disable conflicting formatting rules
   prettierConfig,
 ];
-

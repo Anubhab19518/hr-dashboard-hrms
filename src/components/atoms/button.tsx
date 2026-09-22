@@ -14,7 +14,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const variantStyles: Record<ButtonVariant, CSSProperties> = {
   primary: {
     backgroundColor: 'hsl(var(--color-brand-accent))',
-    color: 'hsl(var(--text-primary))',
+    color: 'hsl(var(--text-inverse))',
     border: '1px solid transparent',
     boxShadow: 'var(--shadow-sm)',
   },
@@ -35,7 +35,7 @@ const variantStyles: Record<ButtonVariant, CSSProperties> = {
   },
   danger: {
     backgroundColor: 'hsl(var(--color-danger))',
-    color: 'hsl(var(--text-primary))',
+    color: 'hsl(var(--text-inverse))',
     border: '1px solid transparent',
   },
 };

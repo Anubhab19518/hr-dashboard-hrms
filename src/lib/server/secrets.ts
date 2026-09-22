@@ -7,7 +7,3 @@ import { serverEnv } from '@/lib/env/server';
 export function getAuthSecret(): string {
   return serverEnv.AUTH_SECRET;
 }
-
-export function getDatabaseUrl(): string {
-  return serverEnv.DATABASE_URL;
-}

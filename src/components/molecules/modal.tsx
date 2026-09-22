@@ -1,15 +1,33 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
+import { X } from '@/components/atoms/icons';
 
 export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
+  description?: string;
   children: ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full';
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+const sizeWidthMap: Record<
+  'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full',
+  string
+> = {
+  sm: '440px',
+  md: '560px',
+  lg: '680px',
+  xl: '780px',
+  '2xl': '920px',
+  '3xl': '1080px',
+  '4xl': '1180px',
+  '5xl': '1320px',
+  full: '96vw',
+};
+
+export function Modal({ isOpen, onClose, title, description, children, size = 'md' }: ModalProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -29,6 +47,8 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const maxWidth = sizeWidthMap[size] || '560px';
 
   return (
     <div
@@ -55,7 +75,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       <div
         style={{
           width: '100%',
-          maxWidth: '500px',
+          maxWidth,
           backgroundColor: 'hsl(var(--bg-surface))',
           border: '1px solid hsl(var(--border-subtle))',
           borderRadius: 'var(--radius-lg)',
@@ -63,29 +83,42 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '90vh',
+          maxHeight: '96vh',
         }}
       >
         <div
           style={{
-            padding: 'var(--space-4) var(--space-6)',
+            padding: '14px var(--space-6)',
             borderBottom: '1px solid hsl(var(--border-subtle))',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'space-between',
           }}
         >
-          <h2
-            id="modal-title"
-            style={{
-              fontSize: 'var(--font-size-lg)',
-              fontWeight: 600,
-              color: 'hsl(var(--text-primary))',
-              margin: 0,
-            }}
-          >
-            {title}
-          </h2>
+          <div>
+            <h2
+              id="modal-title"
+              style={{
+                fontSize: 'var(--font-size-lg)',
+                fontWeight: 700,
+                color: 'hsl(var(--text-primary))',
+                margin: 0,
+              }}
+            >
+              {title}
+            </h2>
+            {description && (
+              <p
+                style={{
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'hsl(var(--text-secondary))',
+                  margin: 'var(--space-1) 0 0 0',
+                }}
+              >
+                {description}
+              </p>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -96,15 +129,16 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 'var(--font-size-lg)',
               borderRadius: 'var(--radius-sm)',
               cursor: 'pointer',
+              border: 'none',
+              backgroundColor: 'transparent',
             }}
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
-        <div style={{ padding: 'var(--space-6)', overflowY: 'auto' }}>{children}</div>
+        <div style={{ padding: '16px var(--space-6)', overflowY: 'auto' }}>{children}</div>
       </div>
     </div>
   );

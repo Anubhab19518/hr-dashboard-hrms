@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { siteConfig } from '@/config/site';
-import { Header } from '@/components/shared/header';
-import { Footer } from '@/components/shared/footer';
+import { AuthProvider } from '@/providers/auth-provider';
 
 export const metadata: Metadata = {
   title: {
@@ -20,13 +19,13 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
   },
   robots: {
-    index: true,
-    follow: true,
+    index: false,
+    follow: false,
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#090d16',
+  themeColor: '#f8fafc',
   width: 'device-width',
   initialScale: 1,
 };
@@ -39,9 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Header />
-        <main style={{ flex: 1 }}>{children}</main>
-        <Footer />
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

@@ -1,2 +1,2 @@
-export * from './modal';
 export * from './empty-state';
+export * from './modal';

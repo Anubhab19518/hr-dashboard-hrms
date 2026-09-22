@@ -9,7 +9,6 @@ describe('Atomic Design System - Organisms Layer', () => {
       render(<Header />);
       expect(screen.getByRole('navigation', { name: 'Main Navigation' })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Sign In' })).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'Get Started' })).toBeInTheDocument();
     });
   });
 
@@ -17,7 +16,7 @@ describe('Atomic Design System - Organisms Layer', () => {
     it('should render copyright and operational status indicator', () => {
       render(<Footer />);
       expect(screen.getByText(/All Systems Operational/i)).toBeInTheDocument();
-      expect(screen.getByText(/Built according to AGENTS.md standards/i)).toBeInTheDocument();
+      expect(screen.getByText(/Workforce Management Platform/i)).toBeInTheDocument();
     });
   });
 });

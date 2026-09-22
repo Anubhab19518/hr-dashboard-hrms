@@ -1,19 +1,30 @@
 import type { HTMLAttributes } from 'react';
 
+export type CardVariant = 'default' | 'glass' | 'subtle';
+
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'glass';
+  variant?: CardVariant;
 }
 
 export function Card({ children, variant = 'default', style, ...props }: CardProps) {
   const isGlass = variant === 'glass';
+  const isSubtle = variant === 'subtle';
+
+  let backgroundColor = 'hsl(var(--bg-surface))';
+  if (isGlass) {
+    backgroundColor = 'hsl(var(--bg-surface) / 0.65)';
+  } else if (isSubtle) {
+    backgroundColor = 'hsl(var(--bg-surface) / 0.8)';
+  }
+
   return (
     <div
       style={{
-        backgroundColor: isGlass ? 'hsl(var(--bg-surface) / 0.65)' : 'hsl(var(--bg-surface))',
+        backgroundColor,
         backdropFilter: isGlass ? 'blur(16px)' : undefined,
         border: '1px solid hsl(var(--border-subtle))',
         borderRadius: 'var(--radius-lg)',
-        boxShadow: 'var(--shadow-md)',
+        boxShadow: isSubtle ? 'none' : 'var(--shadow-md)',
         overflow: 'hidden',
         ...style,
       }}
@@ -28,7 +39,7 @@ export function CardHeader({ children, style, ...props }: HTMLAttributes<HTMLDiv
   return (
     <div
       style={{
-        padding: 'var(--space-6) var(--space-6) var(--space-3)',
+        padding: 'var(--space-5) var(--space-6) var(--space-2)',
         display: 'flex',
         flexDirection: 'column',
         gap: 'var(--space-1)',
@@ -45,8 +56,8 @@ export function CardTitle({ children, style, ...props }: HTMLAttributes<HTMLHead
   return (
     <h3
       style={{
-        fontSize: 'var(--font-size-xl)',
-        fontWeight: 600,
+        fontSize: 'var(--font-size-lg)',
+        fontWeight: 700,
         color: 'hsl(var(--text-primary))',
         margin: 0,
         ...style,
@@ -82,7 +93,7 @@ export function CardContent({ children, style, ...props }: HTMLAttributes<HTMLDi
   return (
     <div
       style={{
-        padding: 'var(--space-3) var(--space-6) var(--space-6)',
+        padding: 'var(--space-4) var(--space-6) var(--space-6)',
         ...style,
       }}
       {...props}

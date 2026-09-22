@@ -3,17 +3,17 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { LoginForm } from '@/features/authentication';
 
 export const metadata: Metadata = {
-  title: 'Sign In',
-  description: 'Sign into the production Next.js enterprise template demonstration portal.',
+  title: 'Sign In | HR Dashboard',
+  description: 'Sign into the HR Dashboard management and employee portal.',
 };
 
 export default function LoginPage() {
   return (
     <Card variant="glass">
       <CardHeader style={{ textAlign: 'center' }}>
-        <CardTitle style={{ fontSize: 'var(--font-size-2xl)' }}>Sign In to Portal</CardTitle>
+        <CardTitle style={{ fontSize: 'var(--font-size-2xl)' }}>HR Dashboard</CardTitle>
         <CardDescription>
-          Enter your enterprise credentials to access orders and system metrics
+          Sign in with your admin email or employee code to access the portal
         </CardDescription>
       </CardHeader>
       <CardContent>

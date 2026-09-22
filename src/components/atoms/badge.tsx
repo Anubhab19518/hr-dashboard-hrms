@@ -1,6 +1,15 @@
 import type { HTMLAttributes, CSSProperties } from 'react';
 
-export type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
+export type BadgeVariant =
+  | 'default'
+  | 'primary'
+  | 'secondary'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'destructive'
+  | 'info'
+  | 'outline';
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
@@ -12,25 +21,45 @@ const badgeVariants: Record<BadgeVariant, CSSProperties> = {
     color: 'hsl(var(--text-secondary))',
     border: '1px solid hsl(var(--border-subtle))',
   },
+  primary: {
+    backgroundColor: 'hsl(var(--primary-color) / 0.15)',
+    color: 'hsl(var(--primary-color))',
+    border: '1px solid hsl(var(--primary-color) / 0.3)',
+  },
+  secondary: {
+    backgroundColor: 'hsl(var(--bg-secondary))',
+    color: 'hsl(var(--text-secondary))',
+    border: '1px solid hsl(var(--border-subtle))',
+  },
   success: {
-    backgroundColor: 'hsl(var(--color-success-bg))',
+    backgroundColor: 'hsl(var(--color-success-bg, var(--color-success) / 0.15))',
     color: 'hsl(var(--color-success))',
     border: '1px solid hsl(var(--color-success) / 0.3)',
   },
   warning: {
-    backgroundColor: 'hsl(var(--color-warning-bg))',
+    backgroundColor: 'hsl(var(--color-warning-bg, var(--color-warning) / 0.15))',
     color: 'hsl(var(--color-warning))',
     border: '1px solid hsl(var(--color-warning) / 0.3)',
   },
   danger: {
-    backgroundColor: 'hsl(var(--color-danger-bg))',
+    backgroundColor: 'hsl(var(--color-danger-bg, var(--color-danger) / 0.15))',
+    color: 'hsl(var(--color-danger))',
+    border: '1px solid hsl(var(--color-danger) / 0.3)',
+  },
+  destructive: {
+    backgroundColor: 'hsl(var(--color-danger-bg, var(--color-danger) / 0.15))',
     color: 'hsl(var(--color-danger))',
     border: '1px solid hsl(var(--color-danger) / 0.3)',
   },
   info: {
-    backgroundColor: 'hsl(var(--color-info-bg))',
+    backgroundColor: 'hsl(var(--color-info-bg, var(--color-info) / 0.15))',
     color: 'hsl(var(--color-info))',
     border: '1px solid hsl(var(--color-info) / 0.3)',
+  },
+  outline: {
+    backgroundColor: 'transparent',
+    color: 'hsl(var(--text-secondary))',
+    border: '1px solid hsl(var(--border-base))',
   },
 };
 

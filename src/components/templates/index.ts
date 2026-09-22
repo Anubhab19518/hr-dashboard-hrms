@@ -1,3 +1,4 @@
-export * from './marketing-template';
-export * from './dashboard-template';
-export * from './auth-template';
+export { AuthTemplate } from './auth-template';
+export { DashboardTemplate } from './dashboard-template';
+export { DashboardShellTemplate } from './dashboard-shell-template';
+export { MarketingTemplate } from './marketing-template';

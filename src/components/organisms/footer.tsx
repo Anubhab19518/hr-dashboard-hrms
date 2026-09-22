@@ -21,8 +21,7 @@ export function Footer() {
         }}
       >
         <p style={{ fontSize: 'var(--font-size-sm)', color: 'hsl(var(--text-muted))' }}>
-          &copy; {new Date().getFullYear()} {siteConfig.name}. Built according to AGENTS.md
-          standards.
+          &copy; {new Date().getFullYear()} {siteConfig.name}. Workforce Management Platform.
         </p>
 
         <div style={{ display: 'flex', gap: 'var(--space-6)' }}>
