@@ -4,10 +4,11 @@ import type { ComponentType } from 'react';
 import { useAuthStore } from '@/lib/client/auth-store';
 import { Badge } from '@/components/atoms/badge';
 import { Card, CardContent } from '@/components/atoms/card';
-import { User, Building2, Camera, Clock, Shield } from '@/components/atoms/icons';
+import { User, Building2, Camera, Clock, Shield, Calendar } from '@/components/atoms/icons';
 import type { Employee, EmployeeStatus, EmploymentType } from '../types/employee.types';
 
-export type EmployeeProfileTab = 'info' | 'assignments' | 'security' | 'biometrics' | 'attendance';
+export type EmployeeProfileTab =
+  'info' | 'assignments' | 'security' | 'biometrics' | 'attendance' | 'holidays';
 
 interface EmployeeProfileHeaderProps {
   employee: Employee;
@@ -125,11 +126,12 @@ export function EmployeeProfileHeader({
   };
 
   const tabs: readonly TabItem[] = [
-    { id: 'info', label: 'Personal & Employment Info', Icon: User },
-    { id: 'assignments', label: 'Site & Shift Assignments', Icon: Building2 },
-    { id: 'security', label: 'Security & Access Control', Icon: Shield },
+    { id: 'info', label: 'Personal & Employment', Icon: User },
+    { id: 'assignments', label: 'Site & Shifts', Icon: Building2 },
+    { id: 'security', label: 'Security & Access', Icon: Shield },
     { id: 'biometrics', label: 'Biometric Face ID', Icon: Camera },
     { id: 'attendance', label: 'Attendance & Timecard', Icon: Clock },
+    { id: 'holidays', label: 'Holidays & Time Off', Icon: Calendar },
   ];
 
   return (
@@ -223,6 +225,9 @@ export function EmployeeProfileHeader({
             gap: 'var(--space-2)',
             borderTop: '1px solid hsl(var(--border-subtle))',
             paddingTop: 'var(--space-4)',
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           {tabs.map((tab) => {
@@ -234,15 +239,17 @@ export function EmployeeProfileHeader({
                 type="button"
                 onClick={() => onTabChange(tab.id)}
                 style={{
-                  padding: 'var(--space-2) var(--space-4)',
+                  padding: 'var(--space-2) var(--space-3)',
                   borderRadius: 'var(--radius-md)',
-                  fontSize: 'var(--font-size-sm)',
+                  fontSize: 'var(--font-size-xs)',
                   fontWeight: 600,
                   cursor: 'pointer',
                   border: 'none',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 'var(--space-2)',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                   transition: 'all 0.15s ease',
                   backgroundColor: isActive
                     ? 'hsl(var(--primary-color))'
@@ -252,7 +259,7 @@ export function EmployeeProfileHeader({
                     : 'hsl(var(--text-secondary))',
                 }}
               >
-                <TabIcon size={16} />
+                <TabIcon size={14} />
                 <span>{tab.label}</span>
               </button>
             );

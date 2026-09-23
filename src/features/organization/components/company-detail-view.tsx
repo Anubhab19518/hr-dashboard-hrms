@@ -19,6 +19,7 @@ import {
 } from '@/components/atoms/icons';
 import { Badge } from '@/components/atoms/badge';
 import { Button } from '@/components/atoms/button';
+import { CompanyHolidaySettings } from '@/features/holidays';
 import { OrganizationService } from '../services/organization.service';
 import type { Company } from '../types/organization.types';
 import { CompanyFormDialog } from './company-form-dialog';
@@ -38,7 +39,7 @@ interface CompanyDocument {
 
 export function CompanyDetailView({ companyId }: CompanyDetailViewProps) {
   const [activeTab, setActiveTab] = useState<
-    'info' | 'addresses' | 'documents' | 'settings' | 'audit'
+    'info' | 'addresses' | 'documents' | 'holidays' | 'settings' | 'audit'
   >('info');
   const [company, setCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -550,6 +551,7 @@ export function CompanyDetailView({ companyId }: CompanyDetailViewProps) {
           { key: 'info', label: 'Company Information', count: null },
           { key: 'addresses', label: 'Addresses', count: activeAddressCount },
           { key: 'documents', label: 'Documents', count: documentsList.length },
+          { key: 'holidays', label: 'Holidays & Weekly Offs', count: null },
           { key: 'settings', label: 'Settings', count: null },
           { key: 'audit', label: 'Audit Logs', count: null },
         ].map((tab) => {
@@ -1837,6 +1839,11 @@ export function CompanyDetailView({ companyId }: CompanyDetailViewProps) {
             </table>
           </div>
         </div>
+      )}
+
+      {/* 6. Tab: Holidays & Weekly Offs */}
+      {activeTab === 'holidays' && (
+        <CompanyHolidaySettings companyId={companyId} companyName={company?.name} />
       )}
 
       {/* 7. Tab 4: Settings Tab (Connected to Database Columns) */}

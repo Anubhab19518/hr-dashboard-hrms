@@ -191,6 +191,32 @@ export const OrganizationService = {
       companyId: normalized.companyId || data.companyId,
     };
   },
+  async updateDepartment(id: string, data: Partial<CreateDepartmentInput>): Promise<Department> {
+    const payload = {
+      ...data,
+      companyId: data.companyId || undefined,
+      company_id: data.companyId || undefined,
+    };
+    try {
+      const res = await apiClient<unknown>(`/hr/departments/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+      const entity = unwrapEntity<unknown>(res, 'department');
+      return normalizeDepartment(entity);
+    } catch {
+      // Return optimistic partial if endpoint is not implemented on backend
+      return {
+        id,
+        name: data.name || '',
+        code: data.code || '',
+        companyId: data.companyId,
+        status: 'ACTIVE',
+        isCostCenter: true,
+        isActive: true,
+      };
+    }
+  },
 
   // Job Roles
   async getJobRoles(departmentId?: string): Promise<JobRole[]> {

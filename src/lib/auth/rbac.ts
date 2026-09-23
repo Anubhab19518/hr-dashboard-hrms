@@ -12,7 +12,13 @@ export type Permission =
   | 'safety:read'
   | 'safety:resolve'
   | 'workspaces:create'
-  | 'workspaces:manage';
+  | 'workspaces:manage'
+  | 'holiday:read'
+  | 'holiday:create'
+  | 'holiday:update'
+  | 'holiday:delete'
+  | 'holiday:assign'
+  | 'holiday:override';
 
 export interface UserSession {
   readonly id: string;
@@ -35,6 +41,12 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'safety:resolve',
     'workspaces:create',
     'workspaces:manage',
+    'holiday:read',
+    'holiday:create',
+    'holiday:update',
+    'holiday:delete',
+    'holiday:assign',
+    'holiday:override',
   ],
   hr_manager: [
     'employees:read',
@@ -46,6 +58,12 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'organization:manage',
     'safety:read',
     'safety:resolve',
+    'holiday:read',
+    'holiday:create',
+    'holiday:update',
+    'holiday:delete',
+    'holiday:assign',
+    'holiday:override',
   ],
   supervisor: [
     'employees:read',
@@ -53,8 +71,9 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'attendance:create',
     'organization:read',
     'safety:read',
+    'holiday:read',
   ],
-  viewer: ['employees:read', 'attendance:read', 'organization:read', 'safety:read'],
+  viewer: ['employees:read', 'attendance:read', 'organization:read', 'safety:read', 'holiday:read'],
 };
 
 /**

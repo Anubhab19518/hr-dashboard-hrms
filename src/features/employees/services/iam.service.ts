@@ -164,21 +164,8 @@ export class IamService {
         else if (Array.isArray(raw.directPermissions)) rawOverridesList = raw.directPermissions;
         else if (Array.isArray(raw.direct_permissions)) rawOverridesList = raw.direct_permissions;
         else if (Array.isArray(raw.overrides)) rawOverridesList = raw.overrides;
-        else if (Array.isArray(raw.userPermissions)) rawOverridesList = raw.userPermissions;
-        else if (Array.isArray(raw.user_permissions)) rawOverridesList = raw.user_permissions;
         else if (Array.isArray(raw.granularPermissions)) rawOverridesList = raw.granularPermissions;
         else if (Array.isArray(raw.customPermissions)) rawOverridesList = raw.customPermissions;
-        else if (
-          Array.isArray(raw.permissions) &&
-          raw.permissions.some(
-            (p) =>
-              p &&
-              typeof p === 'object' &&
-              ('type' in p || 'effect' in p || 'isGranted' in p || 'granted' in p || 'action' in p),
-          )
-        ) {
-          rawOverridesList = raw.permissions;
-        }
       }
 
       const normalizedOverrides = rawOverridesList
@@ -208,12 +195,29 @@ export class IamService {
           let explicitType = '';
           if (obj.type != null) explicitType = String(obj.type);
           else if (obj.effect != null) explicitType = String(obj.effect);
-          else if (obj.action != null) explicitType = String(obj.action);
+          else if (obj.overrideType != null) explicitType = String(obj.overrideType);
           else if (obj.isGranted === true || obj.granted === true || obj.grant === true)
             explicitType = 'GRANT';
           else if (obj.isGranted === false || obj.granted === false || obj.grant === false)
             explicitType = 'DENY';
-          else explicitType = 'GRANT';
+          else if (
+            obj.action === 'GRANT' ||
+            obj.action === 'DENY' ||
+            obj.action === 'grant' ||
+            obj.action === 'deny'
+          )
+            explicitType = String(obj.action);
+          else if (
+            obj.isDirect === true ||
+            obj.isOverride === true ||
+            obj.reason ||
+            obj.justification
+          )
+            explicitType = 'GRANT';
+          else {
+            // Not a direct override record; omit
+            return null;
+          }
 
           const rawType = explicitType.toUpperCase();
 
@@ -235,6 +239,15 @@ export class IamService {
           };
         })
         .filter(Boolean) as EffectivePermissionsData['directOverrides'];
+
+      // Deduplicate overrides by permissionId/code so each permission has at most 1 override
+      const overrideMap = new Map<string, (typeof normalizedOverrides)[0]>();
+      for (const override of normalizedOverrides) {
+        if (override && override.permissionId) {
+          overrideMap.set(override.permissionId, override);
+        }
+      }
+      const uniqueOverrides = Array.from(overrideMap.values());
 
       let effectivePermissions: string[] = [];
       if (typeof raw === 'object' && raw !== null) {
@@ -270,7 +283,7 @@ export class IamService {
         employeeId: (raw.employeeId as string) || employeeId,
         userId: raw.userId as string | undefined,
         assignedRoles: assignedRoles as EffectivePermissionsData['assignedRoles'],
-        directOverrides: normalizedOverrides,
+        directOverrides: uniqueOverrides,
         effectivePermissions,
       };
     } catch (err) {

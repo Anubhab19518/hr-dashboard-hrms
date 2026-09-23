@@ -87,11 +87,50 @@ export function DepartmentsAndRolesTab() {
         }
       }
 
-      // Map departments with their companyId (explicit companyId -> localStorage -> fallback internal HQ)
-      const mappedDepts = validDepts.map((d) => ({
-        ...d,
-        companyId: d.companyId || storedDeptMap[d.id] || fallbackInternalId,
-      }));
+      // Helper to match company for a department
+      const resolveCompanyForDept = (d: Department): string | undefined => {
+        if (d.companyId) return d.companyId;
+        if (storedDeptMap[d.id]) return storedDeptMap[d.id];
+        const codeUpper = (d.code || '').toUpperCase();
+        const nameUpper = (d.name || '').toUpperCase();
+
+        for (const comp of validComps) {
+          const compCode = (comp.code || '').toUpperCase();
+          const compName = (comp.name || '').toUpperCase();
+          if (
+            compCode &&
+            (codeUpper.startsWith(compCode + '-') ||
+              codeUpper.startsWith(compCode) ||
+              codeUpper.includes(compCode))
+          ) {
+            return comp.id;
+          }
+          if (
+            compName.includes('DAS') &&
+            (codeUpper.startsWith('DT') || nameUpper.includes('DAS'))
+          ) {
+            return comp.id;
+          }
+          if (
+            compName.includes('EBS') &&
+            (codeUpper.includes('EBS') || nameUpper.includes('EBS'))
+          ) {
+            return comp.id;
+          }
+        }
+        return undefined;
+      };
+
+      // Map departments with their resolved companyId
+      const mappedDepts = validDepts.map((d) => {
+        const resolvedCompId = resolveCompanyForDept(d);
+        const compName = validComps.find((c) => c.id === resolvedCompId)?.name;
+        return {
+          ...d,
+          companyId: resolvedCompId,
+          companyName: d.companyName || compName,
+        };
+      });
 
       // Create department -> company lookup map
       const deptCompanyMap = new Map<string, string>();
@@ -101,15 +140,43 @@ export function DepartmentsAndRolesTab() {
         }
       }
 
+      // Helper to match company for a job role
+      const resolveCompanyForRole = (role: JobRole): string | undefined => {
+        if (role.companyId) return role.companyId;
+        if (storedRoleMap[role.id]) return storedRoleMap[role.id];
+        if (role.departmentId && deptCompanyMap.get(role.departmentId)) {
+          return deptCompanyMap.get(role.departmentId);
+        }
+        const codeUpper = (role.code || '').toUpperCase();
+        for (const comp of validComps) {
+          const compCode = (comp.code || '').toUpperCase();
+          const compName = (comp.name || '').toUpperCase();
+          if (
+            compCode &&
+            (codeUpper.startsWith(compCode + '-') ||
+              codeUpper.startsWith(compCode) ||
+              codeUpper.includes(compCode))
+          ) {
+            return comp.id;
+          }
+          if (compName.includes('DAS') && codeUpper.startsWith('DT')) {
+            return comp.id;
+          }
+          if (compName.includes('EBS') && codeUpper.includes('EBS')) {
+            return comp.id;
+          }
+        }
+        return undefined;
+      };
+
       // Map job roles with their companyId
-      const mappedRoles = validRoles.map((role) => ({
-        ...role,
-        companyId:
-          role.companyId ||
-          storedRoleMap[role.id] ||
-          (role.departmentId ? deptCompanyMap.get(role.departmentId) : undefined) ||
-          fallbackInternalId,
-      }));
+      const mappedRoles = validRoles.map((role) => {
+        const resolvedCompId = resolveCompanyForRole(role);
+        return {
+          ...role,
+          companyId: resolvedCompId,
+        };
+      });
 
       setDepartments(mappedDepts);
       setJobRoles(mappedRoles);
@@ -140,6 +207,7 @@ export function DepartmentsAndRolesTab() {
 
   // Selected company entity
   const selectedCompany = useMemo(() => {
+    if (!selectedCompanyId || selectedCompanyId === 'ALL') return null;
     return companies.find((c) => c.id === selectedCompanyId) ?? null;
   }, [companies, selectedCompanyId]);
 
@@ -147,12 +215,15 @@ export function DepartmentsAndRolesTab() {
   const handleCompanyChange = (companyId: string) => {
     setSelectedCompanyId(companyId);
     setSelectedDepartmentId(null);
-    setDeptFormData((prev) => ({ ...prev, companyId }));
+    setDeptFormData((prev) => ({
+      ...prev,
+      companyId: companyId === 'ALL' ? (internalCompanyId ?? '') : companyId,
+    }));
   };
 
-  // Departments strictly scoped to the selected company
+  // Departments strictly scoped to the selected company (or all if ALL selected)
   const scopedDepartments = useMemo(() => {
-    if (!selectedCompanyId) return [];
+    if (!selectedCompanyId || selectedCompanyId === 'ALL') return departments;
     return departments.filter((d) => {
       if (d.companyId) {
         return d.companyId === selectedCompanyId;
@@ -164,7 +235,7 @@ export function DepartmentsAndRolesTab() {
 
   // Job roles strictly scoped to the selected company
   const scopedJobRoles = useMemo(() => {
-    if (!selectedCompanyId) return [];
+    if (!selectedCompanyId || selectedCompanyId === 'ALL') return jobRoles;
     const scopedDeptIds = new Set(scopedDepartments.map((d) => d.id));
     return jobRoles.filter((role) => {
       // Explicitly tagged to this company
@@ -190,7 +261,7 @@ export function DepartmentsAndRolesTab() {
     setIsSubmittingDept(true);
     try {
       const targetCompanyId =
-        selectedCompanyId || deptFormData.companyId || internalCompanyId || '';
+        deptFormData.companyId || selectedCompanyId || internalCompanyId || '';
       const payload: CreateDepartmentInput = {
         ...deptFormData,
         companyId: targetCompanyId,
@@ -214,12 +285,13 @@ export function DepartmentsAndRolesTab() {
       }
 
       setDepartments((prev) => [...prev, normalizedCreated]);
+      setSelectedCompanyId(targetCompanyId);
       setSelectedDepartmentId(normalizedCreated.id);
       setIsDeptModalOpen(false);
       setDeptFormData({
         name: '',
         code: '',
-        companyId: selectedCompanyId ?? companies[0]?.id ?? '',
+        companyId: targetCompanyId,
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create department';
@@ -382,11 +454,13 @@ export function DepartmentsAndRolesTab() {
               >
                 Management Context
               </span>
-              {selectedCompany?.type && (
+              {selectedCompanyId === 'ALL' ? (
+                <Badge variant="secondary">ALL COMPANIES</Badge>
+              ) : selectedCompany?.type ? (
                 <Badge variant={selectedCompany.type === 'INTERNAL' ? 'primary' : 'outline'}>
                   {selectedCompany.type === 'INTERNAL' ? 'INTERNAL HQ' : 'CLIENT COMPANY'}
                 </Badge>
-              )}
+              ) : null}
             </div>
             <h1
               style={{
@@ -434,6 +508,7 @@ export function DepartmentsAndRolesTab() {
               cursor: 'pointer',
             }}
           >
+            <option value="ALL">🏢 All Companies (Cross-Company View)</option>
             {companies.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name} &nbsp;&nbsp;—&nbsp;&nbsp; (
@@ -717,19 +792,24 @@ export function DepartmentsAndRolesTab() {
                         </span>
                       </div>
 
-                      {dept.companyName && (
-                        <div
-                          style={{
-                            fontSize: '11px',
-                            color: 'hsl(var(--text-muted))',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {dept.companyName}
-                        </div>
-                      )}
+                      {(() => {
+                        const compName =
+                          dept.companyName || companies.find((c) => c.id === dept.companyId)?.name;
+                        if (!compName) return null;
+                        return (
+                          <div
+                            style={{
+                              fontSize: '11px',
+                              color: 'hsl(var(--text-muted))',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            🏢 {compName}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div
@@ -1137,20 +1217,11 @@ export function DepartmentsAndRolesTab() {
               >
                 Assigned Company *
               </label>
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  color: 'hsl(var(--text-muted))',
-                }}
-              >
-                Locked to top-level scope
-              </span>
             </div>
             <select
               id="dept-company"
-              value={selectedCompanyId || deptFormData.companyId || ''}
-              disabled
+              value={deptFormData.companyId || selectedCompanyId || ''}
+              onChange={(e) => setDeptFormData((p) => ({ ...p, companyId: e.target.value }))}
               style={{
                 width: '100%',
                 height: '38px',
@@ -1158,12 +1229,11 @@ export function DepartmentsAndRolesTab() {
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid hsl(var(--border-subtle))',
                 backgroundColor: 'hsl(var(--bg-secondary))',
-                color: 'hsl(var(--text-secondary))',
+                color: 'hsl(var(--text-primary))',
                 fontSize: 'var(--font-size-xs)',
                 fontWeight: 600,
                 outline: 'none',
-                cursor: 'not-allowed',
-                opacity: 0.85,
+                cursor: 'pointer',
               }}
               required
             >

@@ -16,6 +16,7 @@ import {
   type EmployeeProfileTab,
 } from '@/features/employees';
 import { OrganizationService } from '@/features/organization';
+import { EmployeeHolidayView } from '@/features/holidays';
 
 interface EmployeeDetailPageProps {
   params: Promise<{ id: string }>;
@@ -305,6 +306,13 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
       )}
       {activeTab === 'biometrics' && <EmployeeBiometricsTab employeeId={employee.id} />}
       {activeTab === 'attendance' && <EmployeeAttendanceTab employeeId={employee.id} />}
+      {activeTab === 'holidays' && (
+        <EmployeeHolidayView
+          employeeId={employee.id}
+          employeeName={`${employee.firstName} ${employee.lastName}`.trim()}
+          companyId={employee.currentAssignment?.companyId || employee.companyId}
+        />
+      )}
     </div>
   );
 }

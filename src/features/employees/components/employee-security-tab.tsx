@@ -170,8 +170,12 @@ export function EmployeeSecurityTab({
         IamService.getEffectivePermissions(employeeId).catch(() => null),
       ]);
 
-      const validRoles = Array.isArray(roles) ? roles : [];
-      const validPerms = Array.isArray(perms) ? perms : [];
+      const validRoles = Array.isArray(roles)
+        ? Array.from(new Map(roles.map((r) => [r.id || r.code, r])).values())
+        : [];
+      const validPerms = Array.isArray(perms)
+        ? Array.from(new Map(perms.map((p) => [p.id || p.code, p])).values())
+        : [];
 
       setAvailableRoles(validRoles);
       setAllPermissions(validPerms);
@@ -203,20 +207,26 @@ export function EmployeeSecurityTab({
         );
 
         const directList = Array.isArray(eff.directOverrides) ? eff.directOverrides : [];
-        const grants: Array<{
-          permissionId: string;
-          code?: string;
-          name?: string;
-          reason?: string;
-          subject?: string;
-        }> = [];
-        const denies: Array<{
-          permissionId: string;
-          code?: string;
-          name?: string;
-          reason?: string;
-          subject?: string;
-        }> = [];
+        const grantsMap = new Map<
+          string,
+          {
+            permissionId: string;
+            code?: string;
+            name?: string;
+            reason?: string;
+            subject?: string;
+          }
+        >();
+        const deniesMap = new Map<
+          string,
+          {
+            permissionId: string;
+            code?: string;
+            name?: string;
+            reason?: string;
+            subject?: string;
+          }
+        >();
 
         for (const o of directList) {
           if (!o || typeof o !== 'object') continue;
@@ -247,14 +257,14 @@ export function EmployeeSecurityTab({
             String((o as unknown as { effect?: string }).effect).toUpperCase() === 'DENY';
 
           if (isDeny) {
-            denies.push(item);
+            deniesMap.set(resolvedId, item);
           } else {
-            grants.push(item);
+            grantsMap.set(resolvedId, item);
           }
         }
 
-        setGrantedOverrides(grants);
-        setDeniedOverrides(denies);
+        setGrantedOverrides(Array.from(grantsMap.values()));
+        setDeniedOverrides(Array.from(deniesMap.values()));
       } else {
         // Fallback default: EMPLOYEE role
         const empRole = validRoles.find((r) => r.code === 'EMPLOYEE');
@@ -428,7 +438,19 @@ export function EmployeeSecurityTab({
       await fetchIamData();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to remove override';
-      setErrorMessage(msg);
+      if (msg.toLowerCase().includes('not found') || msg.includes('404')) {
+        // Record was already removed or not an active override; clear locally
+        setGrantedOverrides((prev) =>
+          prev.filter((p) => p.permissionId !== permissionId && p.code !== permissionId),
+        );
+        setDeniedOverrides((prev) =>
+          prev.filter((p) => p.permissionId !== permissionId && p.code !== permissionId),
+        );
+        setSuccessMessage('Permission override cleared.');
+        await fetchIamData();
+      } else {
+        setErrorMessage(msg);
+      }
     }
   };
 
@@ -707,7 +729,7 @@ export function EmployeeSecurityTab({
               gap: 'var(--space-4)',
             }}
           >
-            {availableRoles.map((role) => {
+            {availableRoles.map((role, rIdx) => {
               const isSelected = selectedRoleIds.includes(role.id);
               const meta = ROLE_METADATA[role.code.toUpperCase()] || {
                 summary:
@@ -724,7 +746,7 @@ export function EmployeeSecurityTab({
 
               return (
                 <div
-                  key={role.id}
+                  key={`role-card-${role.id || role.code || rIdx}-${rIdx}`}
                   style={{
                     padding: 'var(--space-4)',
                     borderRadius: 'var(--radius-lg)',
@@ -805,7 +827,10 @@ export function EmployeeSecurityTab({
                     </div>
                     <div>
                       {meta.keyCapabilities.slice(0, 2).map((cap, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <div
+                          key={`cap-item-${role.id || rIdx}-${i}`}
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
                           <span style={{ color: 'hsl(var(--primary-color))' }}>•</span>
                           <span>{cap}</span>
                         </div>
@@ -863,9 +888,9 @@ export function EmployeeSecurityTab({
                         Policy Modules:
                       </div>
                       {role.policyModules && role.policyModules.length > 0 ? (
-                        role.policyModules.map((m) => (
+                        role.policyModules.map((m, mIdx) => (
                           <div
-                            key={m.code}
+                            key={`role-mod-${role.id || rIdx}-${m.code || mIdx}-${mIdx}`}
                             style={{ display: 'flex', justifyContent: 'space-between' }}
                           >
                             <span style={{ color: 'hsl(var(--text-secondary))' }}>
@@ -984,8 +1009,8 @@ export function EmployeeSecurityTab({
                 }}
               >
                 <option value="">-- Choose Permission --</option>
-                {allPermissions.map((p) => (
-                  <option key={p.id} value={p.id}>
+                {allPermissions.map((p, pIdx) => (
+                  <option key={`perm-select-opt-${p.id || p.code || pIdx}-${pIdx}`} value={p.id}>
                     [{p.subject}] {p.name || p.code} ({p.action})
                   </option>
                 ))}
@@ -1054,9 +1079,9 @@ export function EmployeeSecurityTab({
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {grantedOverrides.map((g) => (
+                  {grantedOverrides.map((g, idx) => (
                     <div
-                      key={g.permissionId}
+                      key={`grant-override-${g.permissionId || g.code || 'grant'}-${idx}`}
                       style={{
                         backgroundColor: '#ffffff',
                         padding: '8px 12px',
@@ -1164,9 +1189,9 @@ export function EmployeeSecurityTab({
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {deniedOverrides.map((d) => (
+                  {deniedOverrides.map((d, idx) => (
                     <div
-                      key={d.permissionId}
+                      key={`deny-override-${d.permissionId || d.code || 'deny'}-${idx}`}
                       style={{
                         backgroundColor: '#ffffff',
                         padding: '8px 12px',
@@ -1461,8 +1486,8 @@ export function EmployeeSecurityTab({
               <option value="ALL">All Policy Modules ({uniqueSubjects.length - 1})</option>
               {uniqueSubjects
                 .filter((s) => s !== 'ALL')
-                .map((sub) => (
-                  <option key={sub} value={sub}>
+                .map((sub, sIdx) => (
+                  <option key={`matrix-subject-opt-${sub}-${sIdx}`} value={sub}>
                     Module: {sub}
                   </option>
                 ))}
@@ -1529,9 +1554,9 @@ export function EmployeeSecurityTab({
                     </td>
                   </tr>
                 ) : (
-                  filteredMatrix.map((item) => (
+                  filteredMatrix.map((item, mIdx) => (
                     <tr
-                      key={item.id}
+                      key={`matrix-row-${item.id || item.code || mIdx}-${mIdx}`}
                       style={{
                         borderBottom: '1px solid hsl(var(--border-subtle))',
                         backgroundColor: item.isGranted
