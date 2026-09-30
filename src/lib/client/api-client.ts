@@ -194,14 +194,37 @@ export async function apiClient<T>(endpoint: string, options: ApiClientOptions =
       message = body['error'];
     }
 
-    // Check for nested validation issues in context.issues or details (Zod / backend validation format)
-    const context = (body['context'] ?? body['details']) as
+    // Check for nested validation issues from backend (Zod / Express / Sequelize formats)
+    const issuesList: string[] = [];
+    const context = body['context'] as
       { issues?: Array<{ path?: string[]; message?: string }> } | undefined;
-    if (context?.issues && Array.isArray(context.issues) && context.issues.length > 0) {
-      const formattedIssues = context.issues
-        .map((issue) => `${issue.path?.join('.') || 'field'}: ${issue.message || 'Invalid'}`)
-        .join(', ');
-      message = `${message || 'Validation failed'}: ${formattedIssues}`;
+    if (context?.issues && Array.isArray(context.issues)) {
+      context.issues.forEach((issue) => {
+        issuesList.push(`${issue.path?.join('.') || 'field'}: ${issue.message || 'Invalid'}`);
+      });
+    }
+
+    const rawErrors = body['errors'] ?? body['details'];
+    if (Array.isArray(rawErrors)) {
+      rawErrors.forEach((err) => {
+        if (typeof err === 'string') {
+          issuesList.push(err);
+        } else if (typeof err === 'object' && err !== null) {
+          const e = err as {
+            field?: string;
+            path?: string[] | string;
+            message?: string;
+            msg?: string;
+          };
+          const p = Array.isArray(e.path) ? e.path.join('.') : e.path || e.field || '';
+          const m = e.message || e.msg || JSON.stringify(e);
+          issuesList.push(p ? `${p}: ${m}` : m);
+        }
+      });
+    }
+
+    if (issuesList.length > 0) {
+      message = message ? `${message} (${issuesList.join('; ')})` : issuesList.join('; ');
     }
 
     message = message ?? `API Error: ${response.status}`;

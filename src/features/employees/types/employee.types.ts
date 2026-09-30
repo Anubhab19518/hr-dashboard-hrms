@@ -244,15 +244,30 @@ export interface SupervisorOption {
 
 export interface AttendanceRecord {
   readonly id?: string;
+  readonly workspaceId?: string;
   readonly employeeId?: string;
-  readonly date: string;
+  readonly companyId?: string;
+  readonly companyName?: string | null;
+  readonly siteId?: string;
+  readonly siteName?: string | null;
+  readonly shiftId?: string;
+  readonly shiftName?: string | null;
+  readonly attendanceDate?: string;
+  readonly date?: string;
   readonly checkInTime?: string | null;
   readonly checkOutTime?: string | null;
   readonly status: string;
+  readonly source?: string | null;
+  readonly faceMatchScore?: number | null;
+  readonly checkInLatitude?: number | null;
+  readonly checkInLongitude?: number | null;
+  readonly checkOutLatitude?: number | null;
+  readonly checkOutLongitude?: number | null;
+  readonly remarks?: string | null;
   readonly hoursWorked?: number | null;
   readonly verificationMethod?: string | null;
-  readonly siteName?: string | null;
-  readonly companyName?: string | null;
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
 }
 
 export interface AttendanceHistoryResponse {

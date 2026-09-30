@@ -14,6 +14,7 @@ import {
   HelpCircle,
   FileSpreadsheet,
   Calendar,
+  CalendarCheck,
   ChevronRight,
   ChevronLeft,
   ChevronDown,
@@ -38,6 +39,12 @@ const MAIN_MENU_ITEMS: NavItem[] = [
     href: '/dashboard/attendance',
     icon: ClipboardCheck,
     hasChevron: true,
+  },
+  {
+    title: 'Leave Management',
+    href: '/dashboard/leave',
+    icon: CalendarCheck,
+    hasChevron: false,
   },
   {
     title: 'Holiday Calendars',

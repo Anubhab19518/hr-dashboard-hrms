@@ -35,6 +35,8 @@ function unwrapList<T>(res: unknown, key?: string): T[] {
   if (typeof res === 'object' && res !== null) {
     const obj = res as Record<string, unknown>;
     if (Array.isArray(obj.records)) return obj.records as T[];
+    if (Array.isArray(obj.rows)) return obj.rows as T[];
+    if (Array.isArray(obj.list)) return obj.list as T[];
     if (key && Array.isArray(obj[key])) return obj[key] as T[];
     if (Array.isArray(obj.data)) return obj.data as T[];
     if (Array.isArray(obj.employees)) return obj.employees as T[];
@@ -549,6 +551,38 @@ export const EmployeeService = {
         }));
     } catch {
       return [];
+    }
+  },
+
+  /**
+   * Fetch attendance records for a specific employee within a date range.
+   * GET /api/v1/hr/attendance?employeeId=:id&startDate=:start&endDate=:end&page=1&limit=50
+   */
+  async getEmployeeAttendance(
+    employeeId: string,
+    params?: {
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      limit?: number;
+    },
+  ): Promise<AttendanceRecord[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('employeeId', employeeId);
+    if (params?.startDate) searchParams.set('startDate', params.startDate);
+    if (params?.endDate) searchParams.set('endDate', params.endDate);
+    if (params?.page) searchParams.set('page', String(params.page));
+    const safeLimit = Math.min(Math.max(1, params?.limit || 50), 100);
+    searchParams.set('limit', String(safeLimit));
+
+    const qs = searchParams.toString();
+    try {
+      const res = await apiClient<unknown>(`/hr/attendance?${qs}`);
+      return unwrapList<AttendanceRecord>(res, 'records');
+    } catch {
+      // Fallback
+      const res = await apiClient<unknown>(`/attendance/logs?${qs}`);
+      return unwrapList<AttendanceRecord>(res, 'logs');
     }
   },
 

@@ -16,6 +16,7 @@ import {
   ChevronRight,
 } from '@/components/atoms/icons';
 import { HolidayService } from '../services/holiday.service';
+import { LeaveService, type LeaveApplication } from '@/features/leave';
 import {
   OverrideType,
   type EmployeeHolidaySummary,
@@ -60,6 +61,7 @@ export function EmployeeHolidayView({
   const [overrides, setOverrides] = useState<EmployeeHolidayOverride[]>([]);
   const [calendarDaysList, setCalendarDaysList] = useState<HolidayCalendarDay[]>([]);
   const [hasAssignedCalendar, setHasAssignedCalendar] = useState<boolean>(true);
+  const [approvedLeaves, setApprovedLeaves] = useState<LeaveApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +74,44 @@ export function EmployeeHolidayView({
   const [overrideIsPaid, setOverrideIsPaid] = useState(true);
   const [isSubmittingOverride, setIsSubmittingOverride] = useState(false);
   const [overrideError, setOverrideError] = useState<string | null>(null);
+
+  // 1. Fetch Approved Leaves for Employee (as per Backend Integration Guide)
+  useEffect(() => {
+    if (!employeeId) return;
+    const fetchLeaves = async () => {
+      try {
+        // Primary call: GET /api/v1/leave/applications?employeeId=:id&status=APPROVED&limit=100
+        const directData = await LeaveService.getEmployeeApplications(employeeId, 'APPROVED');
+        if (Array.isArray(directData) && directData.length > 0) {
+          setApprovedLeaves(directData);
+        } else {
+          // Secondary fallback: query general approved list and match by employee
+          const allApps = await LeaveService.getApplications({ status: 'APPROVED', limit: 100 });
+          const candidateList = allApps.applications || [];
+          const matched = candidateList.filter((a) => {
+            const raw = a as unknown as Record<string, unknown>;
+            const rawEmpId = a.employeeId || (raw.employee_id as string);
+            const rawUserId = (raw.userId as string) || (raw.user_id as string);
+            const appName = (a.employeeName || (raw.employee_name as string) || '').toLowerCase();
+            const targetName = (employeeName || '').toLowerCase();
+            return (
+              rawEmpId === employeeId ||
+              rawUserId === employeeId ||
+              (targetName &&
+                appName &&
+                (appName === targetName ||
+                  appName.includes(targetName) ||
+                  targetName.includes(appName)))
+            );
+          });
+          setApprovedLeaves(matched.length > 0 ? matched : directData);
+        }
+      } catch (err) {
+        console.error('Failed to load employee approved leaves', err);
+      }
+    };
+    void fetchLeaves();
+  }, [employeeId, employeeName]);
 
   const fetchHolidayData = useCallback(async () => {
     setIsLoading(true);
@@ -89,6 +129,7 @@ export function EmployeeHolidayView({
           ? HolidayService.getCompanyAssignments(companyId).catch(() => [])
           : Promise.resolve([]),
       ]);
+
       setSummary(sum);
       setOverrides(Array.isArray(ovList) ? ovList : []);
 
@@ -238,6 +279,49 @@ export function EmployeeHolidayView({
   const paidDatesSet = new Set(summary?.paidHolidayDates || []);
   const unpaidDatesSet = new Set(summary?.unpaidHolidayDates || []);
   const weeklyOffDatesSet = new Set(summary?.weeklyOffDates || []);
+
+  // 2. Build Date Lookup Map for Leaves (Timezone-Safe as per Backend Guide)
+  const approvedLeavesMap = useMemo(() => {
+    const map = new Map<string, { name: string; code: string; isPaid: boolean }>();
+    approvedLeaves.forEach((leave) => {
+      const statusStr = String(leave.status || '').toUpperCase();
+      if (statusStr !== 'APPROVED') return;
+      if (!leave.fromDate || !leave.toDate) return;
+
+      const fromStr = String(leave.fromDate).split('T')[0] || '';
+      const toStr = String(leave.toDate).split('T')[0] || '';
+      const [startYear, startMonth, startDay] = fromStr.split('-').map(Number);
+      const [endYear, endMonth, endDay] = toStr.split('-').map(Number);
+      if (!startYear || !startMonth || !startDay || !endYear || !endMonth || !endDay) return;
+
+      const cur = new Date(startYear, startMonth - 1, startDay);
+      const end = new Date(endYear, endMonth - 1, endDay);
+      while (cur <= end) {
+        const y = cur.getFullYear();
+        const m = String(cur.getMonth() + 1).padStart(2, '0');
+        const d = String(cur.getDate()).padStart(2, '0');
+        const dateKey = `${y}-${m}-${d}`;
+        map.set(dateKey, {
+          name: leave.leaveTypeName || leave.leaveType?.name || leave.leaveTypeCode || 'Leave',
+          code: leave.leaveTypeCode || leave.leaveType?.code || 'LEAVE',
+          isPaid: leave.leaveType?.isPaid ?? true,
+        });
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+    return map;
+  }, [approvedLeaves]);
+
+  // Count approved leave days in the selected month
+  const approvedLeavesInMonthCount = useMemo(() => {
+    let count = 0;
+    calendarDays.forEach((cell) => {
+      if (cell.isCurrentMonth && approvedLeavesMap.has(cell.dateString)) {
+        count++;
+      }
+    });
+    return count;
+  }, [calendarDays, approvedLeavesMap]);
 
   const resolveHolidayTitle = useCallback(
     (dateString: string): string => {
@@ -497,7 +581,7 @@ export function EmployeeHolidayView({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
           gap: 'var(--space-3)',
         }}
       >
@@ -580,6 +664,25 @@ export function EmployeeHolidayView({
           </span>
           <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 800, color: '#b45309' }}>
             {summary?.unpaidHolidayDays || 0}
+          </span>
+        </div>
+
+        <div
+          style={{
+            padding: 'var(--space-3) var(--space-4)',
+            borderRadius: 'var(--radius-lg)',
+            backgroundColor: '#faf5ff',
+            border: '1px solid #e9d5ff',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+          }}
+        >
+          <span style={{ fontSize: '11px', color: '#7e22ce', fontWeight: 600 }}>
+            🟪 Approved Leaves
+          </span>
+          <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 800, color: '#6b21a8' }}>
+            {approvedLeavesInMonthCount}
           </span>
         </div>
 
@@ -676,6 +779,18 @@ export function EmployeeHolidayView({
                   />
                   Unpaid Holiday
                 </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span
+                    style={{
+                      width: '10px',
+                      height: '10px',
+                      backgroundColor: '#f3e8ff',
+                      borderRadius: '2px',
+                      border: '1px solid #d8b4fe',
+                    }}
+                  />
+                  Approved Leave
+                </span>
               </div>
             </CardTitle>
 
@@ -761,6 +876,8 @@ export function EmployeeHolidayView({
               const isWeeklyOff = weeklyOffDatesSet.has(cell.dateString);
               const isPaidHoliday = paidDatesSet.has(cell.dateString);
               const isUnpaidHoliday = unpaidDatesSet.has(cell.dateString);
+              const approvedLeave = approvedLeavesMap.get(cell.dateString);
+              const isApprovedLeave = !!approvedLeave;
               const holidayTitle = resolveHolidayTitle(cell.dateString);
 
               let bgColor = 'hsl(var(--bg-surface))';
@@ -769,7 +886,13 @@ export function EmployeeHolidayView({
               let tagBg = '';
               let tagColor = '';
 
-              if (isPaidHoliday) {
+              if (isApprovedLeave) {
+                bgColor = '#faf5ff';
+                borderColor = '#d8b4fe';
+                tagText = `${approvedLeave.name} (Leave)`;
+                tagBg = '#f3e8ff';
+                tagColor = '#6b21a8';
+              } else if (isPaidHoliday) {
                 bgColor = '#eff6ff';
                 borderColor = '#93c5fd';
                 tagText = holidayTitle || 'Paid Holiday';
@@ -817,7 +940,7 @@ export function EmployeeHolidayView({
                         fontSize: '12px',
                         fontWeight: 700,
                         color:
-                          isWeeklyOff || isPaidHoliday
+                          isWeeklyOff || isPaidHoliday || isApprovedLeave
                             ? 'hsl(var(--text-primary))'
                             : 'hsl(var(--text-secondary))',
                       }}
