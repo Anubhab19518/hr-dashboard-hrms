@@ -46,7 +46,8 @@ function unwrapEntity<T>(res: unknown, key?: string): T {
   return res as T;
 }
 
-function cleanPayload(data: Record<string, unknown>): Record<string, unknown> {
+function cleanPayload(data?: Record<string, unknown> | null): Record<string, unknown> {
+  if (!data || typeof data !== 'object') return {};
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (value !== null && value !== undefined) {

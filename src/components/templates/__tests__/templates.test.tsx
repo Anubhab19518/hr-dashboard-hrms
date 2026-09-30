@@ -62,4 +62,21 @@ describe('Atomic Design System - Templates Layer', () => {
       expect(screen.getByText('Need help? Contact support')).toBeInTheDocument();
     });
   });
+
+  describe('DashboardShellTemplate', () => {
+    it('should render sidebar, topbar, and content slots', async () => {
+      const { DashboardShellTemplate } = await import('../dashboard-shell-template');
+      render(
+        <DashboardShellTemplate
+          sidebarSlot={<nav aria-label="sidebar">Sidebar</nav>}
+          topbarSlot={<header aria-label="topbar">Topbar</header>}
+          contentSlot={<main aria-label="main">Main Content</main>}
+        />,
+      );
+
+      expect(screen.getByRole('navigation', { name: 'sidebar' })).toBeInTheDocument();
+      expect(screen.getByRole('banner', { name: 'topbar' })).toBeInTheDocument();
+      expect(screen.getByRole('main', { name: 'main' })).toBeInTheDocument();
+    });
+  });
 });

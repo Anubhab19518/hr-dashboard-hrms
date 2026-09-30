@@ -246,6 +246,27 @@ describe('Employee IAM & Security Onboarding (HR Job Role != Security Role)', ()
         }),
       );
     });
+
+    it('handles revokeSecurityRole and handles errors gracefully across all endpoints', async () => {
+      vi.mocked(apiClient).mockResolvedValueOnce({});
+      await IamService.revokeSecurityRole('emp-1', 'role-1');
+      expect(apiClient).toHaveBeenCalledWith('/iam/employees/emp-1/roles/role-1', {
+        method: 'DELETE',
+      });
+
+      // Error branches
+      vi.mocked(apiClient).mockRejectedValue(new Error('Network failure'));
+      const roles = await IamService.getSecurityRoles();
+      expect(roles).toEqual([]);
+
+      const perms = await IamService.getAtomicPermissions();
+      expect(perms).toEqual([]);
+
+      const eff = await IamService.getEffectivePermissions('emp-err');
+      expect(eff.assignedRoles).toEqual([]);
+      expect(eff.directOverrides).toEqual([]);
+      expect(eff.effectivePermissions).toEqual([]);
+    });
   });
 
   describe('Precedence & Effective Permission Resolution Simulation', () => {

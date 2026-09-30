@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { hasPermission, assertAuthorized } from '@/lib/auth/rbac';
+import { AuthService } from '../services/auth.service';
+import { apiClient } from '@/lib/client/api-client';
+
+vi.mock('@/lib/client/api-client', () => ({
+  apiClient: vi.fn(),
+}));
 
 describe('HR Domain RBAC (AGENTS.md Rule 16)', () => {
   it('should enforce role-based permissions correctly for HR domain', () => {
@@ -80,5 +86,140 @@ describe('Authentication Schemas (Admin & Employee)', () => {
       password: 'ValidPassword123',
     });
     expect(invalidLogin.success).toBe(false);
+  });
+});
+
+describe('AuthService API Methods & Fallbacks', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('calls adminLogin with primary and fallback endpoints', async () => {
+    const mockAdminRes = {
+      user: { id: 'u1', email: 'admin@acme.com', name: 'Admin' },
+      tokens: { accessToken: 'acc-1', refreshToken: 'ref-1' },
+      workspaces: [{ id: 'w1', name: 'Acme', slug: 'acme', role: 'ADMIN' }],
+    };
+
+    // Primary succeeds
+    vi.mocked(apiClient).mockResolvedValueOnce(mockAdminRes);
+    const primaryRes = await AuthService.adminLogin({
+      email: 'admin@acme.com',
+      password: 'password123',
+    });
+    expect(primaryRes.user.email).toBe('admin@acme.com');
+
+    // Primary fails, fallback succeeds
+    vi.mocked(apiClient)
+      .mockRejectedValueOnce(new Error('404'))
+      .mockResolvedValueOnce(mockAdminRes);
+    const fallbackRes = await AuthService.adminLogin({
+      email: 'admin@acme.com',
+      password: 'password123',
+    });
+    expect(fallbackRes.user.email).toBe('admin@acme.com');
+
+    // Both fail
+    vi.mocked(apiClient)
+      .mockRejectedValueOnce(new Error('Primary failed'))
+      .mockRejectedValueOnce(new Error('Fallback failed'));
+    await expect(
+      AuthService.adminLogin({ email: 'admin@acme.com', password: 'password123' }),
+    ).rejects.toThrow('Primary failed');
+  });
+
+  it('calls employeeLogin with endpoint cascade', async () => {
+    const mockEmpRes = {
+      user: { id: 'u2', email: 'emp@acme.com', name: 'Employee' },
+      tokens: { accessToken: 'acc-2', refreshToken: 'ref-2' },
+      workspaces: [],
+    };
+
+    // Fails first 2 endpoints, succeeds on 3rd
+    vi.mocked(apiClient)
+      .mockRejectedValueOnce(new Error('Endpoint 1 failed'))
+      .mockRejectedValueOnce(new Error('Endpoint 2 failed'))
+      .mockResolvedValueOnce(mockEmpRes);
+
+    const res = await AuthService.employeeLogin({
+      employeeCode: 'EMP001',
+      password: 'secret',
+    });
+    expect(res.user.name).toBe('Employee');
+
+    // All endpoints fail
+    vi.mocked(apiClient).mockRejectedValue(new Error('Endpoint failed'));
+
+    await expect(
+      AuthService.employeeLogin({ employeeCode: 'EMP001', password: 'bad' }),
+    ).rejects.toThrow('Endpoint failed');
+  });
+
+  it('tests unified login cross-fallback logic', async () => {
+    const mockRes = {
+      user: { id: 'u1', email: 'user@acme.com', name: 'User' },
+      tokens: { accessToken: 'acc', refreshToken: 'ref' },
+      workspaces: [],
+    };
+
+    // When identifier is email, but admin fails and employee succeeds
+    vi.mocked(apiClient)
+      .mockRejectedValueOnce(new Error('Not admin'))
+      .mockRejectedValueOnce(new Error('Not admin fallback'))
+      .mockResolvedValueOnce(mockRes);
+
+    const emailEmp = await AuthService.login({
+      identifier: 'user@acme.com',
+      password: 'password',
+    });
+    expect(emailEmp.user.name).toBe('User');
+
+    // When identifier is code, but employee fails and admin succeeds
+    vi.mocked(apiClient)
+      .mockRejectedValueOnce(new Error('Not emp 1'))
+      .mockRejectedValueOnce(new Error('Not emp 2'))
+      .mockRejectedValueOnce(new Error('Not emp 3'))
+      .mockRejectedValueOnce(new Error('Not emp 4'))
+      .mockResolvedValueOnce(mockRes);
+
+    const codeAdmin = await AuthService.login({
+      identifier: 'admin_username',
+      password: 'password',
+    });
+    expect(codeAdmin.user.name).toBe('User');
+  });
+
+  it('handles refresh primary and fallback, and handles logout errors gracefully', async () => {
+    // Refresh primary fails, fallback succeeds
+    vi.mocked(apiClient)
+      .mockRejectedValueOnce(new Error('Primary refresh failed'))
+      .mockResolvedValueOnce({ accessToken: 'new-token' });
+
+    const ref = await AuthService.refresh();
+    expect(ref.accessToken).toBe('new-token');
+
+    // Refresh both fail
+    vi.mocked(apiClient)
+      .mockRejectedValueOnce(new Error('Primary failed'))
+      .mockRejectedValueOnce(new Error('Secondary failed'));
+    await expect(AuthService.refresh()).rejects.toThrow('Primary failed');
+
+    // Logout catches errors silently
+    vi.mocked(apiClient)
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockRejectedValueOnce(new Error('Network error 2'));
+    await expect(AuthService.logout()).resolves.toBeUndefined();
+  });
+
+  it('handles listWorkspaces with records wrapper or direct array', async () => {
+    vi.mocked(apiClient).mockResolvedValueOnce({
+      records: [{ id: 'w1', name: 'Acme', slug: 'acme', role: 'ADMIN' }],
+    });
+    const wrapped = await AuthService.listWorkspaces();
+    expect(wrapped.length).toBe(1);
+
+    vi.mocked(apiClient).mockResolvedValueOnce(null);
+    const empty = await AuthService.listWorkspaces();
+    expect(empty).toEqual([]);
   });
 });

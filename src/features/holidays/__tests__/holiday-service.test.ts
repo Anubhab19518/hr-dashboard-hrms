@@ -35,6 +35,24 @@ describe('HolidayService', () => {
       expect(calendars).toEqual(mockCalendars);
     });
 
+    it('fetches single calendar and updates it', async () => {
+      vi.mocked(apiClient)
+        .mockResolvedValueOnce({
+          calendar: { id: 'cal-1', name: 'India Standard 2026' },
+        })
+        .mockResolvedValueOnce({
+          calendar: { id: 'cal-1', name: 'India Standard Updated' },
+        });
+
+      const single = await HolidayService.getCalendar('cal-1');
+      expect(single.name).toBe('India Standard 2026');
+
+      const updated = await HolidayService.updateCalendar('cal-1', {
+        name: 'India Standard Updated',
+      });
+      expect(updated.name).toBe('India Standard Updated');
+    });
+
     it('creates a new holiday calendar', async () => {
       const newCal = {
         name: 'Custom Tech 2026',
@@ -94,7 +112,7 @@ describe('HolidayService', () => {
       expect(days).toEqual(mockDays);
     });
 
-    it('adds a holiday day to a calendar', async () => {
+    it('adds and updates a holiday day in a calendar', async () => {
       const input = {
         holidayDate: '2026-08-15',
         name: 'Independence Day',
@@ -103,10 +121,14 @@ describe('HolidayService', () => {
         isOptional: false,
       };
 
-      vi.mocked(apiClient).mockResolvedValueOnce({
-        status: 'success',
-        data: { id: 'day-2', calendarId: 'cal-1', ...input },
-      });
+      vi.mocked(apiClient)
+        .mockResolvedValueOnce({
+          status: 'success',
+          data: { id: 'day-2', calendarId: 'cal-1', ...input },
+        })
+        .mockResolvedValueOnce({
+          day: { id: 'day-2', calendarId: 'cal-1', ...input, name: 'National Day' },
+        });
 
       const added = await HolidayService.addCalendarDay('cal-1', input);
       expect(apiClient).toHaveBeenCalledWith('/holidays/calendars/cal-1/days', {
@@ -114,6 +136,11 @@ describe('HolidayService', () => {
         body: JSON.stringify(input),
       });
       expect(added.id).toBe('day-2');
+
+      const updated = await HolidayService.updateCalendarDay('cal-1', 'day-2', {
+        name: 'National Day',
+      });
+      expect(updated.name).toBe('National Day');
     });
 
     it('removes a holiday day from a calendar', async () => {
@@ -151,7 +178,7 @@ describe('HolidayService', () => {
       expect(assignments).toEqual(mockAssignments);
     });
 
-    it('assigns calendar to company', async () => {
+    it('assigns, updates, and unassigns company calendar', async () => {
       const payload = {
         calendarId: 'cal-1',
         effectiveFrom: '2026-01-01',
@@ -159,10 +186,15 @@ describe('HolidayService', () => {
         weeklyOffDays: [0, 6],
       };
 
-      vi.mocked(apiClient).mockResolvedValueOnce({
-        status: 'success',
-        data: { id: 'c-assign-2', companyId: 'comp-1', ...payload },
-      });
+      vi.mocked(apiClient)
+        .mockResolvedValueOnce({
+          status: 'success',
+          data: { id: 'c-assign-2', companyId: 'comp-1', ...payload },
+        })
+        .mockResolvedValueOnce({
+          assignment: { id: 'c-assign-2', weeklyOffDays: [0] },
+        })
+        .mockResolvedValueOnce({});
 
       const res = await HolidayService.assignCompanyCalendar('comp-1', payload);
       expect(apiClient).toHaveBeenCalledWith('/holidays/companies/comp-1/calendars', {
@@ -170,6 +202,16 @@ describe('HolidayService', () => {
         body: JSON.stringify(payload),
       });
       expect(res.id).toBe('c-assign-2');
+
+      const updated = await HolidayService.updateCompanyAssignment('c-assign-2', {
+        weeklyOffDays: [0],
+      });
+      expect(updated.weeklyOffDays).toEqual([0]);
+
+      await HolidayService.unassignCompanyCalendar('c-assign-2');
+      expect(apiClient).toHaveBeenCalledWith('/holidays/company-calendars/c-assign-2', {
+        method: 'DELETE',
+      });
     });
   });
 
@@ -202,17 +244,28 @@ describe('HolidayService', () => {
       expect(summary).toEqual(mockSummary);
     });
 
-    it('creates an employee holiday override', async () => {
+    it('fetches, creates, and deletes employee holiday overrides', async () => {
       const input = {
         holidayDate: '2026-04-14',
         overrideType: OverrideType.ADD,
         reason: 'Special company event',
       };
 
-      vi.mocked(apiClient).mockResolvedValueOnce({
-        status: 'success',
-        data: { id: 'ovr-1', employeeId: 'emp-1', ...input },
-      });
+      vi.mocked(apiClient)
+        .mockResolvedValueOnce({
+          overrides: [{ id: 'ovr-1', employeeId: 'emp-1', holidayDate: '2026-04-14' }],
+        })
+        .mockResolvedValueOnce({
+          status: 'success',
+          data: { id: 'ovr-1', employeeId: 'emp-1', ...input },
+        })
+        .mockResolvedValueOnce({
+          status: 'success',
+          data: null,
+        });
+
+      const overrides = await HolidayService.getEmployeeOverrides('emp-1');
+      expect(overrides.length).toBe(1);
 
       const ovr = await HolidayService.createEmployeeOverride('emp-1', input);
       expect(apiClient).toHaveBeenCalledWith('/holidays/employees/emp-1/overrides', {
@@ -220,13 +273,6 @@ describe('HolidayService', () => {
         body: JSON.stringify(input),
       });
       expect(ovr.id).toBe('ovr-1');
-    });
-
-    it('deletes an employee holiday override', async () => {
-      vi.mocked(apiClient).mockResolvedValueOnce({
-        status: 'success',
-        data: null,
-      });
 
       await HolidayService.deleteEmployeeOverride('ovr-1');
       expect(apiClient).toHaveBeenCalledWith('/holidays/overrides/ovr-1', {

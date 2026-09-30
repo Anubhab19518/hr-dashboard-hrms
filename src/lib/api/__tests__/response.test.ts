@@ -1,6 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createSuccessResponse, createErrorResponse } from '../response';
-import { CORRELATION_HEADER } from '../correlation';
+import { CORRELATION_HEADER, getRequestId } from '../correlation';
+import { headers } from 'next/headers';
+
+vi.mock('next/headers', () => ({
+  headers: vi.fn(),
+}));
 
 describe('API Standard Response Contracts (AGENTS.md Rule 43)', () => {
   it('should format successful response conforming to ApiResponse contract', async () => {
@@ -31,5 +36,30 @@ describe('API Standard Response Contracts (AGENTS.md Rule 43)', () => {
     expect(json.error.message).toBe('Entity not found');
     expect(json.error.details).toEqual({ resource: 'orders' });
     expect(json.meta.requestId).toBe('req-err-456');
+  });
+
+  it('should extract or generate request id in getRequestId', async () => {
+    // 1. Existing header
+    const mockHeaders = new Headers();
+    mockHeaders.set(CORRELATION_HEADER, 'existing-req-id');
+    vi.mocked(headers).mockResolvedValueOnce(
+      mockHeaders as unknown as Awaited<ReturnType<typeof headers>>,
+    );
+
+    const id1 = await getRequestId();
+    expect(id1).toBe('existing-req-id');
+
+    // 2. Empty header
+    const emptyHeaders = new Headers();
+    vi.mocked(headers).mockResolvedValueOnce(
+      emptyHeaders as unknown as Awaited<ReturnType<typeof headers>>,
+    );
+    const id2 = await getRequestId();
+    expect(id2.startsWith('req_')).toBe(true);
+
+    // 3. Exception outside request context
+    vi.mocked(headers).mockRejectedValueOnce(new Error('Outside request'));
+    const id3 = await getRequestId();
+    expect(id3.startsWith('req_')).toBe(true);
   });
 });
