@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, use } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/atoms/button';
 import { Card, CardContent } from '@/components/atoms/card';
@@ -18,12 +19,14 @@ import {
 import { OrganizationService } from '@/features/organization';
 import { EmployeeHolidayView } from '@/features/holidays';
 
-interface EmployeeDetailPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) {
-  const { id } = use(params);
+export default function EmployeeDetailPage() {
+  const routeParams = useParams<{ id: string }>();
+  const id =
+    typeof routeParams?.id === 'string'
+      ? routeParams.id
+      : Array.isArray(routeParams?.id)
+        ? routeParams.id[0]
+        : '';
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

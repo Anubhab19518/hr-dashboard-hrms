@@ -50,6 +50,7 @@ export function CompanyDetailView({ companyId }: CompanyDetailViewProps) {
 
   // Fetch live company details from backend API
   const fetchCompanyDetails = useCallback(async () => {
+    if (!companyId || !companyId.trim()) return;
     setIsLoading(true);
     setError(null);
     try {

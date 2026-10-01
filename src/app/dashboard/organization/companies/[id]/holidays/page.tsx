@@ -1,14 +1,12 @@
 'use client';
 
-import { use } from 'react';
+import { useParams } from 'next/navigation';
 import { CompanyHolidaySettings } from '@/features/holidays';
 
-interface CompanyHolidaysPageProps {
-  params: Promise<{ id: string }>;
-}
+export default function CompanyHolidaysPage() {
+  const params = useParams<{ id: string }>();
+  const id =
+    typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : '';
 
-export default function CompanyHolidaysPage({ params }: CompanyHolidaysPageProps) {
-  const { id } = use(params);
-
-  return <CompanyHolidaySettings companyId={id} />;
+  return <CompanyHolidaySettings companyId={id || ''} />;
 }
