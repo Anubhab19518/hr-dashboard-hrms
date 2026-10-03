@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { siteConfig } from '@/config/site';
 import { AuthProvider } from '@/providers/auth-provider';
-
+import { ToastProvider } from '@/providers/toast-provider';
 export const metadata: Metadata = {
   title: {
     default: siteConfig.name,
@@ -38,7 +38,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </AuthProvider>
       </body>
     </html>
   );

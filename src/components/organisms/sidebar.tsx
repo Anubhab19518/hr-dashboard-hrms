@@ -15,6 +15,8 @@ import {
   FileSpreadsheet,
   Calendar,
   CalendarCheck,
+  Clock,
+  Megaphone,
   ChevronRight,
   ChevronLeft,
   ChevronDown,
@@ -22,12 +24,14 @@ import {
   ChevronsRight,
   LogOut,
 } from '@/components/atoms/icons';
+import { useEarlyCheckoutBadgeWatcher } from '@/lib/client/early-checkout-store';
 
 interface NavItem {
   title: string;
   href: string;
   icon: typeof Home;
   hasChevron?: boolean;
+  badgeKey?: 'early-checkout';
 }
 
 const MAIN_MENU_ITEMS: NavItem[] = [
@@ -41,6 +45,13 @@ const MAIN_MENU_ITEMS: NavItem[] = [
     hasChevron: true,
   },
   {
+    title: 'Early Check-Outs',
+    href: '/dashboard/attendance/requests',
+    icon: Clock,
+    hasChevron: false,
+    badgeKey: 'early-checkout',
+  },
+  {
     title: 'Leave Management',
     href: '/dashboard/leave',
     icon: CalendarCheck,
@@ -50,6 +61,12 @@ const MAIN_MENU_ITEMS: NavItem[] = [
     title: 'Holiday Calendars',
     href: '/dashboard/settings/holidays',
     icon: Calendar,
+    hasChevron: false,
+  },
+  {
+    title: 'Announcements',
+    href: '/dashboard/announcements',
+    icon: Megaphone,
     hasChevron: false,
   },
   { title: 'Worker Safety & GIS', href: '/dashboard/safety', icon: ShieldAlert, hasChevron: true },
@@ -67,6 +84,9 @@ export function Sidebar() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const { pendingCount: earlyCheckoutCount } = useEarlyCheckoutBadgeWatcher({
+    pollIntervalMs: 30000,
+  });
 
   const displayName = user?.name || 'Admin / Staff';
   const displayRole = getUserDisplayRole(user);
@@ -218,6 +238,7 @@ export function Sidebar() {
               const isOtherActive = item.href !== '/dashboard' && pathname.startsWith(item.href);
               const isActive = isExactDashboard || isOtherActive;
               const IconComp = item.icon;
+              const badgeCount = item.badgeKey === 'early-checkout' ? earlyCheckoutCount : 0;
 
               return (
                 <Link
@@ -238,19 +259,97 @@ export function Sidebar() {
                     transition: 'all var(--transition-fast)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                    <IconComp
-                      size={18}
-                      strokeWidth={isActive ? 2 : 1.75}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--space-3)',
+                      minWidth: 0,
+                    }}
+                  >
+                    <div
                       style={{
-                        color: isActive ? 'hsl(var(--text-inverse))' : 'hsl(var(--text-muted))',
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
-                    />
-                    {!collapsed && <span>{item.title}</span>}
+                    >
+                      <IconComp
+                        size={18}
+                        strokeWidth={isActive ? 2 : 1.75}
+                        style={{
+                          color: isActive ? 'hsl(var(--text-inverse))' : 'hsl(var(--text-muted))',
+                        }}
+                      />
+                      {collapsed && badgeCount > 0 && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: '-4px',
+                            right: '-6px',
+                            backgroundColor: 'hsl(var(--color-warning))',
+                            color: 'hsl(var(--text-inverse))',
+                            fontSize: '9px',
+                            fontWeight: 800,
+                            minWidth: '14px',
+                            height: '14px',
+                            padding: '0 var(--space-1)',
+                            borderRadius: 'var(--radius-full)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {badgeCount > 99 ? '99+' : badgeCount}
+                        </span>
+                      )}
+                    </div>
+                    {!collapsed && (
+                      <span
+                        style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {item.title}
+                      </span>
+                    )}
                   </div>
 
-                  {!collapsed && item.hasChevron && !isActive && (
-                    <ChevronRight size={14} style={{ color: 'hsl(var(--text-muted))' }} />
+                  {!collapsed && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--space-2)',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {badgeCount > 0 && (
+                        <span
+                          style={{
+                            backgroundColor: isActive
+                              ? 'hsl(var(--bg-surface))'
+                              : 'hsl(var(--color-warning))',
+                            color: isActive
+                              ? 'hsl(var(--color-brand-accent))'
+                              : 'hsl(var(--text-inverse))',
+                            fontSize: '10px',
+                            fontWeight: 800,
+                            padding: '1px var(--space-2)',
+                            borderRadius: 'var(--radius-full)',
+                            boxShadow: 'var(--shadow-sm)',
+                          }}
+                        >
+                          {badgeCount}
+                        </span>
+                      )}
+                      {item.hasChevron && !isActive && (
+                        <ChevronRight size={14} style={{ color: 'hsl(var(--text-muted))' }} />
+                      )}
+                    </div>
                   )}
                 </Link>
               );

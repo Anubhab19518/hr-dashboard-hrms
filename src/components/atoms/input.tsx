@@ -54,9 +54,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-describedby={error ? errorId : helperText ? helperId : undefined}
             style={{
               width: '100%',
-              padding: leftIcon
-                ? 'var(--space-2) var(--space-3) var(--space-2) 36px'
-                : 'var(--space-2) var(--space-3)',
+              height: '42px',
+              padding: leftIcon ? '0 var(--space-3) 0 40px' : '0 var(--space-3)',
               fontSize: 'var(--font-size-sm)',
               backgroundColor: 'hsl(var(--bg-secondary))',
               color: 'hsl(var(--text-primary))',
@@ -64,9 +63,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 ? '1px solid hsl(var(--color-danger))'
                 : '1px solid hsl(var(--border-subtle))',
               borderRadius: 'var(--radius-md)',
-              transition: 'border-color var(--transition-fast)',
+              transition: 'border-color var(--transition-fast), box-shadow var(--transition-fast)',
               opacity: disabled ? 0.6 : 1,
               cursor: disabled ? 'not-allowed' : 'text',
+              outline: 'none',
               ...style,
             }}
             {...props}

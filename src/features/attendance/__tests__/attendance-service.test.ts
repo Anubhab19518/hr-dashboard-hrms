@@ -94,4 +94,139 @@ describe('AttendanceService Unit Tests', () => {
     });
     expect(fallbackPunch.id).toBe('att-fallback');
   });
+
+  it('fetches early checkout requests (array, object, and fallback formats)', async () => {
+    // 1. Array response
+    vi.mocked(apiClient).mockResolvedValueOnce([
+      {
+        id: 'ec-1',
+        employeeId: 'emp-1',
+        scheduledShiftEndTime: '17:00',
+        requestedCheckoutTime: '15:00',
+        reason: 'Medical appointment',
+        status: 'PENDING',
+        requestedAt: '2026-10-03T14:00:00Z',
+      },
+    ]);
+
+    const res1 = await AttendanceService.getEarlyCheckoutRequests({ status: 'PENDING' });
+    expect(res1.items.length).toBe(1);
+    expect(res1.total).toBe(1);
+    expect(res1.pendingCount).toBe(1);
+
+    // 2. Object response with items and pendingCount
+    vi.mocked(apiClient).mockResolvedValueOnce({
+      items: [
+        {
+          id: 'ec-2',
+          employeeId: 'emp-2',
+          scheduledShiftEndTime: '18:00',
+          requestedCheckoutTime: '16:00',
+          reason: 'Family emergency',
+          status: 'APPROVED',
+          requestedAt: '2026-10-03T12:00:00Z',
+        },
+      ],
+      total: 15,
+      page: 2,
+      limit: 10,
+      pendingCount: 3,
+    });
+
+    const res2 = await AttendanceService.getEarlyCheckoutRequests({
+      status: 'ALL',
+      page: 2,
+      limit: 10,
+      search: 'emp',
+      startDate: '2026-10-01',
+      endDate: '2026-10-03',
+    });
+    expect(res2.items.length).toBe(1);
+    expect(res2.total).toBe(15);
+    expect(res2.page).toBe(2);
+    expect(res2.pendingCount).toBe(3);
+
+    // 3. Fallback path
+    vi.mocked(apiClient)
+      .mockRejectedValueOnce(new Error('HR endpoint failed'))
+      .mockResolvedValueOnce({
+        requests: [
+          {
+            id: 'ec-3',
+            employeeId: 'emp-3',
+            scheduledShiftEndTime: '19:00',
+            requestedCheckoutTime: '17:00',
+            reason: 'Transit issue',
+            status: 'PENDING',
+            requestedAt: '2026-10-03T13:00:00Z',
+          },
+        ],
+        total: 1,
+      });
+
+    const res3 = await AttendanceService.getEarlyCheckoutRequests();
+    expect(res3.items.length).toBe(1);
+    expect(res3.items[0]!.id).toBe('ec-3');
+  });
+
+  it('fetches pending early checkout count and handles failures', async () => {
+    vi.mocked(apiClient).mockResolvedValueOnce({
+      pendingCount: 5,
+      total: 5,
+      items: [],
+    });
+
+    const count = await AttendanceService.getPendingEarlyCheckoutCount();
+    expect(count).toBe(5);
+
+    // Error case returns 0
+    vi.mocked(apiClient)
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockRejectedValueOnce(new Error('Fallback failed'));
+    const zeroCount = await AttendanceService.getPendingEarlyCheckoutCount();
+    expect(zeroCount).toBe(0);
+  });
+
+  it('approves and rejects early checkout requests with fallback', async () => {
+    // Approve
+    vi.mocked(apiClient).mockResolvedValueOnce({
+      request: {
+        id: 'ec-1',
+        employeeId: 'emp-1',
+        status: 'APPROVED',
+        scheduledShiftEndTime: '17:00',
+        requestedCheckoutTime: '15:00',
+        reason: 'Dentist',
+        requestedAt: '2026-10-03T10:00:00Z',
+      },
+    });
+
+    const approved = await AttendanceService.actionEarlyCheckoutRequest('ec-1', {
+      action: 'APPROVE',
+    });
+    expect(approved.status).toBe('APPROVED');
+
+    // Reject with fallback
+    vi.mocked(apiClient)
+      .mockRejectedValueOnce(new Error('Primary failed'))
+      .mockResolvedValueOnce({
+        request: {
+          id: 'ec-2',
+          employeeId: 'emp-2',
+          status: 'REJECTED',
+          rejectionReason: 'Understaffed',
+          scheduledShiftEndTime: '17:00',
+          requestedCheckoutTime: '15:00',
+          reason: 'Errand',
+          requestedAt: '2026-10-03T10:00:00Z',
+        },
+      });
+
+    const rejected = await AttendanceService.actionEarlyCheckoutRequest('ec-2', {
+      action: 'REJECT',
+      rejectionReason: 'Understaffed',
+    });
+    expect(rejected.status).toBe('REJECTED');
+    expect(rejected.rejectionReason).toBe('Understaffed');
+  });
 });

@@ -1,35 +1,83 @@
 'use client';
 
 import { Card, CardContent } from '@/components/atoms/card';
-import type { AttendanceDailySummary } from '../types/attendance.types';
+import type { AttendanceDailySummary, AttendanceLog } from '../types/attendance.types';
 
 interface AttendanceStatsCardsProps {
   summary: AttendanceDailySummary | null;
+  logs?: readonly AttendanceLog[];
 }
 
-export function AttendanceStatsCards({ summary }: AttendanceStatsCardsProps) {
+export function AttendanceStatsCards({ summary, logs = [] }: AttendanceStatsCardsProps) {
+  // Derive live real-time counts from current punch logs as intelligent fallback
+  const derivedPresent = logs.filter(
+    (l) =>
+      l.status === 'PRESENT' ||
+      l.status === 'LATE' ||
+      l.status === 'HALF_DAY' ||
+      l.status === 'OVERTIME' ||
+      Boolean(l.checkInTime) ||
+      l.logType === 'CHECK_IN',
+  ).length;
+
+  const derivedLate = logs.filter((l) => l.status === 'LATE').length;
+  const derivedAbsent = logs.filter((l) => l.status === 'ABSENT').length;
+  const derivedOnLeave = logs.filter((l) => l.status === 'ON_LEAVE').length;
+
+  const totalLogs = logs.length;
+  const inBoundsCount = logs.filter((l) => l.isWithinGeofence !== false).length;
+  const derivedGeofence = totalLogs > 0 ? Math.round((inBoundsCount / totalLogs) * 100) : 100;
+
+  // Resolve values prioritizing backend summary while falling back to live logs aggregation
+  const presentValue =
+    summary?.totalPresent ??
+    summary?.present ??
+    summary?.presentCount ??
+    (derivedPresent > 0 ? derivedPresent : 0);
+
+  const expectedValue =
+    summary?.totalExpected ??
+    summary?.expected ??
+    summary?.totalEmployees ??
+    summary?.totalScheduled ??
+    (totalLogs > 0 ? totalLogs : presentValue);
+
+  const lateValue = summary?.totalLate ?? summary?.late ?? summary?.lateCount ?? derivedLate;
+
+  const absentValue =
+    summary?.totalAbsent ?? summary?.absent ?? summary?.absentCount ?? derivedAbsent;
+
+  const onLeaveValue =
+    summary?.onLeave ?? summary?.leave ?? summary?.onLeaveCount ?? derivedOnLeave;
+
+  const geofenceValue =
+    summary?.geofenceCompliancePercentage ??
+    summary?.compliance ??
+    summary?.geofenceCompliance ??
+    derivedGeofence;
+
   const stats = [
     {
       label: 'Present Today',
-      value: summary?.totalPresent ?? 0,
-      subtext: `Out of ${summary?.totalExpected ?? 0} scheduled`,
+      value: presentValue,
+      subtext: `Out of ${expectedValue} scheduled`,
       color: 'var(--color-success)',
     },
     {
       label: 'Late Arrivals',
-      value: summary?.totalLate ?? 0,
+      value: lateValue,
       subtext: 'Exceeded shift grace period',
       color: 'var(--color-warning)',
     },
     {
       label: 'Absent / On Leave',
-      value: (summary?.totalAbsent ?? 0) + (summary?.onLeave ?? 0),
-      subtext: `${summary?.onLeave ?? 0} approved leaves`,
+      value: absentValue + onLeaveValue,
+      subtext: `${onLeaveValue} approved leaves`,
       color: 'var(--color-danger)',
     },
     {
       label: 'Geofence Verified',
-      value: `${summary?.geofenceCompliancePercentage ?? 100}%`,
+      value: `${geofenceValue}%`,
       subtext: 'Within designated site boundaries',
       color: 'var(--primary-color)',
     },

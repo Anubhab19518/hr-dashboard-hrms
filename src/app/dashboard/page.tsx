@@ -255,6 +255,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void loadStats();
+    const interval = setInterval(() => {
+      void loadStats();
+    }, 15000);
+    return () => clearInterval(interval);
   }, [loadStats, activeWorkspaceId]);
 
   // Attendance Overview distribution data
@@ -1210,57 +1214,116 @@ export default function DashboardPage() {
           {/* Activity List */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {recentLogs.length > 0 ? (
-              recentLogs.map((log) => (
-                <div
-                  key={log.id}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}
-                >
-                  <div
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      backgroundColor: '#ECFDF5',
-                      color: '#10B981',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      marginTop: '2px',
-                    }}
-                  >
-                    {log.verificationMethod?.toUpperCase().includes('FACE') ? (
-                      <Camera size={16} strokeWidth={2} />
-                    ) : (
-                      <MapPin size={16} strokeWidth={2} />
-                    )}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>
-                        {log.employeeName || log.employeeCode || 'Workforce Member'}
-                      </span>
-                      <Badge variant="success" style={{ fontSize: '10px' }}>
-                        {log.logType === 'CHECK_IN' ? 'Check In' : 'Check Out'}
-                      </Badge>
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
-                      {log.siteName || 'Client Site'} •{' '}
-                      {new Date(log.timestamp).toLocaleTimeString([], {
+              recentLogs.map((log) => {
+                const empName =
+                  log.employee?.name || log.employeeName || log.employeeCode || 'Workforce Member';
+
+                const compName =
+                  log.employee?.company?.name ||
+                  log.companyName ||
+                  log.location?.siteName ||
+                  log.siteName ||
+                  'Das Technologies';
+
+                const siteLocation =
+                  log.location?.address ||
+                  log.siteAddress ||
+                  (log.location?.siteName && log.location.siteName !== compName
+                    ? log.location.siteName
+                    : '');
+
+                const isCheckOut =
+                  Boolean(
+                    log.checkOutTime &&
+                    (!log.checkInTime ||
+                      new Date(log.checkOutTime).getTime() >=
+                        new Date(log.checkInTime || 0).getTime()),
+                  ) || log.logType === 'CHECK_OUT';
+
+                const eventLabel = isCheckOut
+                  ? 'Check Out'
+                  : log.status === 'LATE'
+                    ? 'Late Check In'
+                    : 'Check In';
+
+                const badgeVariant = isCheckOut
+                  ? 'outline'
+                  : log.status === 'LATE'
+                    ? 'warning'
+                    : 'success';
+
+                const timeRaw =
+                  log.timestamp ||
+                  (isCheckOut ? log.checkOutTime : log.checkInTime) ||
+                  log.checkInTime ||
+                  log.checkOutTime;
+
+                let formattedTime = '—';
+                if (timeRaw) {
+                  try {
+                    const d = new Date(timeRaw);
+                    if (!isNaN(d.getTime())) {
+                      formattedTime = d.toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
-                      })}{' '}
-                      via {log.verificationMethod || 'Biometrics'}
+                      });
+                    }
+                  } catch {
+                    formattedTime = String(timeRaw);
+                  }
+                }
+
+                const verification = log.verificationMethod || log.source || 'Biometrics';
+
+                return (
+                  <div
+                    key={log.id}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}
+                  >
+                    <div
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        backgroundColor: isCheckOut ? '#F3F4F6' : '#ECFDF5',
+                        color: isCheckOut ? '#6B7280' : '#10B981',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        marginTop: '2px',
+                      }}
+                    >
+                      {log.verificationMethod?.toUpperCase().includes('FACE') ? (
+                        <Camera size={16} strokeWidth={2} />
+                      ) : (
+                        <MapPin size={16} strokeWidth={2} />
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>
+                          {empName}
+                        </span>
+                        <Badge variant={badgeVariant} style={{ fontSize: '10px' }}>
+                          {eventLabel}
+                        </Badge>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
+                        <span style={{ fontWeight: 600, color: '#374151' }}>{compName}</span>
+                        {siteLocation ? <span> ({siteLocation})</span> : null} • {formattedTime} via{' '}
+                        {verification}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>

@@ -29,6 +29,7 @@ export {
   Filter,
   RefreshCw,
   X,
+  XCircle,
   Eye,
   EyeOff,
   Mail,
@@ -77,4 +78,5 @@ export {
   Zap,
   Phone,
   Info,
+  Megaphone,
 } from 'lucide-react';
